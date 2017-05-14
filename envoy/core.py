@@ -8,6 +8,9 @@ envoy.core
 This module provides
 """
 
+__version__ = '0.0.0'
+
+
 import subprocess
 import shlex
 
