@@ -8,41 +8,75 @@ envoy.core
 This module provides
 """
 
-__version__ = '0.0.0'
 
 
-import subprocess
+import os
 import shlex
+import subprocess
+import sys
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
+
+
+__version__ = '0.0.0'
+__license__ = 'MIT'
+__author__ = 'Kenneth Reitz'
+
 
 class Response(object):
     """a command's response"""
 
-    def __init__(self):
+    def __init__(self, process=None):
         super(Response, self).__init__()
+
+        self._process = process
         self.command = None
+        self.std_err = None
+        self.std_out = None
 
     def __repr__(self):
-        return '<Responses [{0}]'.format(self.command)
+        if len(self.command):
+            return '<Response [{0}]'.format(self.command[0])
+        else:
+            return '<Response>'
 
     @property
     def status_code(self):
-        return 0
-
-    @property
-    def std_out(self):
-        return ''
-
-    @property
-    def std_err(self):
-        return ''
+        return self._process.returncode
 
 
-def run(command, data=None, timeout=None):
+def run(command, data=None, timeout=None, capture=True):
     """Executes a given command and returns Response.
 
     Blocks until process is complete, or timeout is reached.
     """
 
-    return Response()
+    #Prepare arguments
+    if isinstance(command, basestring):
+        command = shlex.split(command)
+
+    if capture:
+        do_capture = subprocess.PIPE
+
+    p = subprocess.Popen(command,
+        universal_newlines=True,
+        shell=True,
+        env=os.environ,
+        stdin=do_capture or None,
+        stdout=do_capture or None,
+        stderr=do_capture or None,
+    )
+
+    out, err = p.communicate(input=data)
+
+    r = Response(process=p)
+    r.command = command
+    r.std_out = out
+    r.std_err = err
+
+    return r
 
 
