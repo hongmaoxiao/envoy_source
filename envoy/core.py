@@ -36,6 +36,7 @@ class Response(object):
         self.command = None
         self.std_err = None
         self.std_out = None
+        self.status_code = None
 
     def __repr__(self):
         if len(self.command):
@@ -43,9 +44,6 @@ class Response(object):
         else:
             return '<Response>'
 
-    @property
-    def status_code(self):
-        return self._process.returncode
 
 
 def run(command, data=None, timeout=None, capture=True):
@@ -63,7 +61,7 @@ def run(command, data=None, timeout=None, capture=True):
 
     p = subprocess.Popen(command,
         universal_newlines=True,
-        shell=True,
+        shell=False,
         env=os.environ,
         stdin=do_capture or None,
         stdout=do_capture or None,
@@ -76,6 +74,7 @@ def run(command, data=None, timeout=None, capture=True):
     r.command = command
     r.std_out = out
     r.std_err = err
+    r.status_code = p.returncode
 
     return r
 
