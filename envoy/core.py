@@ -41,7 +41,7 @@ class Response(object):
 
 
 
-def run(command, data=None, timeout=None, capture=True):
+def run(command, data=None, timeout=None):
     """Executes a given command and returns Response.
 
     Blocks until process is complete, or timeout is reached.
@@ -56,9 +56,6 @@ def run(command, data=None, timeout=None, capture=True):
 
     for c in command:
 
-        if capture:
-            do_capture = subprocess.PIPE
-
         if len(history):
             data = history[-1].std_out
 
@@ -66,9 +63,9 @@ def run(command, data=None, timeout=None, capture=True):
             universal_newlines=True,
             shell=False,
             env=os.environ,
-            stdin=do_capture or None,
-            stdout=do_capture or None,
-            stderr=do_capture or None,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
         out, err = p.communicate(input=data)
