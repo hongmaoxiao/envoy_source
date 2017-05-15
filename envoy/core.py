@@ -54,7 +54,7 @@ def run(command, data=None, timeout=None, capture=True):
 
     history = []
 
-    for c in enumerate(command):
+    for c in command:
 
         if capture:
             do_capture = subprocess.PIPE
