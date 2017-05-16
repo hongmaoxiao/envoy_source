@@ -13,12 +13,48 @@ This module provides
 import os
 import shlex
 import subprocess
+import threading
 
 
 __version__ = '0.0.0'
 __license__ = 'MIT'
 __author__ = 'Kenneth Reitz'
 
+
+class Command(object):
+    def __init__(self, cmd):
+        self.cmd = cmd
+        self.process = None
+        self.out = None
+        self.err = None
+        self.returncode = None
+        self.data = None
+
+    def run(self, data, timeout):
+        self.data = data
+        def target():
+
+            self.process = subprocess.Popen(self.cmd,
+                universal_newlines=True,
+                shell=False,
+                env=os.environ,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0,
+            )
+
+            self.out, self.err = self.process.communicate(self.data)
+
+        thread = threading.Thread(target=target)
+        thread.start
+
+        thread.join(timeout)
+        if thread.is_alive():
+            self.process.terminate()
+            thread.join()
+        self.returncode = self.process.returncode
+        return self.out, self.err
 
 class Response(object):
     """a command's response"""
@@ -49,17 +85,7 @@ def run(command, data=None, timeout=None):
 
     #Prepare arguments
     if isinstance(command, basestring):
-        splitter = shlex.shlex(command, posix=True)
-        splitter.whitespace = '|'
-        splitter.whitespace_split = True
-        command = []
-        while True:
-            token = splitter.get_token
-            if token:
-                command.append(token)
-            else:
-                break
-
+        command = command.split('|')
         command = map(shlex.split, command)
 
     history = []
@@ -67,25 +93,18 @@ def run(command, data=None, timeout=None):
     for c in command:
 
         if len(history):
-            data = history[-1].std_out
+            # due to broken pip problems pass only first 10MB
+            data = history[-1].std_out[0:10*1024]
 
-        p = subprocess.Popen(c,
-            universal_newlines=True,
-            shell=False,
-            env=os.environ,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        cmd = Command(c)
+        out, err = Command.run(data, timeout)
 
-        out, err = p.communicate(input=data)
-
-        r = Response(process=p)
+        r = Response(process=cmd)
 
         r.command = c
         r.std_out = out
         r.std_err = err
-        r.status_code = p.returncode
+        r.status_code = cmd.returncode
 
         history.append(r)
 
