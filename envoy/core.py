@@ -47,7 +47,7 @@ class Command(object):
             self.out, self.err = self.process.communicate(self.data)
 
         thread = threading.Thread(target=target)
-        thread.start
+        thread.start()
 
         thread.join(timeout)
         if thread.is_alive():
@@ -57,7 +57,7 @@ class Command(object):
         return self.out, self.err
 
 class Response(object):
-    """a command's response"""
+    """A command's response"""
 
     def __init__(self, process=None):
         super(Response, self).__init__()
@@ -69,12 +69,12 @@ class Response(object):
         self.status_code = None
         self.history = []
 
+
     def __repr__(self):
         if len(self.command):
-            return '<Response [{0}]'.format(self.command[0])
+            return '<Response [{0}]>'.format(self.command[0])
         else:
             return '<Response>'
-
 
 
 def run(command, data=None, timeout=None):
@@ -97,7 +97,7 @@ def run(command, data=None, timeout=None):
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
-        out, err = Command.run(data, timeout)
+        out, err = cmd.run(data, timeout)
 
         r = Response(process=cmd)
 
