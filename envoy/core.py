@@ -16,7 +16,7 @@ import subprocess
 import threading
 
 
-__version__ = '0.0.0'
+__version__ = '0.0.1'
 __license__ = 'MIT'
 __author__ = 'Kenneth Reitz'
 
