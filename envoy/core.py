@@ -83,9 +83,19 @@ def run(command, data=None, timeout=None):
     Blocks until process is complete, or timeout is reached.
     """
 
-    #Prepare arguments
+    # Prepare arguments
     if isinstance(command, basestring):
-        command = command.split('|')
+        splitter = shlex.shlex(command, posix=True)
+        splitter.whitespace = '|'
+        splitter.whitespace_split = True
+        command = []
+        while True:
+            token = splitter.get_token()
+            if token:
+                command.append(token)
+            else:
+                break
+
         command = map(shlex.split, command)
 
     history = []
