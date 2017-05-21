@@ -102,9 +102,10 @@ def ConnectedCommand(object):
             stream = self.std_out
         pass
 
-    def send(self, end='\n'):
+    def send(self, str, end='\n'):
         """Sends a line to std_in."""
         # TODO: Y U LINE BUFFER
+        return self._process.stdin.write(str+end)
         pass
 
     def block(self):
@@ -138,7 +139,7 @@ def expand_args(command):
 
     # Prepare arguments.
     if isinstance(command, basestring):
-        splitter = shlex.shlex(command)
+        splitter = shlex.shlex(command, posix=True)
         splitter.whitespace = '|'
         splitter.whitespace_split = True
         command = []
