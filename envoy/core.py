@@ -30,9 +30,10 @@ class Command(object):
         self.returncode = None
         self.data = None
 
-    def run(self, data, timeout, env):
+    def run(self, data, timeout, kill_timeout, env):
         self.data = data
-        environ = dict(os.environ).update(env or {})
+        environ = dict(os.environ)
+        environ.update(env or {})
 
         def target():
 
@@ -54,7 +55,10 @@ class Command(object):
         thread.join(timeout)
         if thread.is_alive():
             self.process.terminate()
-            thread.join()
+            thread.join(kill_timeout)
+            if thread.is_alive():
+                self.process.kill()
+                thread.join()
         self.returncode = self.process.returncode
         return self.out, self.err
 
@@ -139,7 +143,7 @@ def expand_args(command):
 
     # Prepare arguments.
     if isinstance(command, basestring):
-        splitter = shlex.shlex(command, posix=True)
+        splitter = shlex.shlex(command)
         splitter.whitespace = '|'
         splitter.whitespace_split = True
         command = []
@@ -155,7 +159,7 @@ def expand_args(command):
     return command
 
 
-def run(command, data=None, timeout=None, env=None):
+def run(command, data=None, timeout=None, kill_timeout=None, env=None):
     """Executes a given command and returns Response.
 
     Blocks until process is complete, or timeout is reached.
@@ -172,7 +176,7 @@ def run(command, data=None, timeout=None, env=None):
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
-        out, err = cmd.run(data, timeout, env)
+        out, err = cmd.run(data, timeout, kill_timeout, env)
 
         r = Response(process=cmd)
 
@@ -193,7 +197,8 @@ def connect(command, data=None, env=None):
 
     # TODO: support piped commands
     command_str = expand_args(command).pop()
-    environ = dict(os.environ).update(env or {})
+    environ = dict(os.environ)
+    environ.update(env or {})
 
     process = subprocess.Popen(command_str,
         universal_newlines=True,
