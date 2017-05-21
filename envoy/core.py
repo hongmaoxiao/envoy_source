@@ -5,7 +5,7 @@
 envoy.core
 ~~~~~~~~~~
 
-This module provides
+This module provides envoy awesomeness
 """
 
 
@@ -78,7 +78,6 @@ def ConnectedCommand(object):
     @property
     def status_code(self):
         """The status code of the process.
-
         If the code is None, assume that it's still running.
         """
         if self._status_code is not None:
@@ -101,8 +100,9 @@ def ConnectedCommand(object):
             stream = self.std_out
         pass
 
-    def send_line(self, end='\n'):
+    def send(self, end='\n'):
         """Sends a line to std_in."""
+        # TODO: Y U LINE BUFFER
         pass
 
     def block(self):
@@ -180,27 +180,18 @@ def run(command, data=None, timeout=None):
 
         history.append(r)
 
-
     r = history.pop()
     r.history = history
 
     return r
 
-def connect():
-    pass
 def connect(command, data=None):
-    """Spawns a process from the given command.
-    """
+    """Spawns a new process from the given command."""
 
     # TODO: support piped commands
     command_str = expand_args(command).pop()
 
-    # command = ConnectedCommand()
-
-    # def taget():
-
-
-    self.process = subprocess.Popen(command_str,
+    process = subprocess.Popen(command_str,
         universal_newlines=True,
         shell=False,
         env=os.environ,
@@ -210,14 +201,4 @@ def connect(command, data=None):
         bufsize=0,
     )
 
-    c = ConnectedCommand(process=process)
-    return c
-
-    # out, err = process.communicate(data)
-
-    # thread = threading.Thread(target=target)
-    # thread.start()
-
-    # self.returncode = self.process.returncode
-
-    return cmd
+    return ConnectedCommand(process=process)
