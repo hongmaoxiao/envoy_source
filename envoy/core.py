@@ -76,14 +76,10 @@ class Response(object):
         else:
             return '<Response>'
 
+def prep_args(command):
+    """Parses command strings and returns a Popen-ready list."""
 
-def run(command, data=None, timeout=None):
-    """Executes a given command and returns Response.
-
-    Blocks until process is complete, or timeout is reached.
-    """
-
-    # Prepare arguments
+    # Prepare arguments.
     if isinstance(command, basestring):
         splitter = shlex.shlex(command, posix=True)
         splitter.whitespace = '|'
@@ -97,6 +93,17 @@ def run(command, data=None, timeout=None):
                 break
 
         command = map(shlex.split, command)
+
+    return command
+
+
+def run(command, data=None, timeout=None):
+    """Executes a given command and returns Response.
+
+    Blocks until process is complete, or timeout is reached.
+    """
+
+    command = prep_args(command)
 
     history = []
 
