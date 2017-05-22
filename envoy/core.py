@@ -11,7 +11,9 @@ This module provides envoy awesomeness
 
 
 import os
+import sys
 import shlex
+import signal
 import subprocess
 import threading
 
@@ -20,6 +22,27 @@ __version__ = '0.0.2'
 __license__ = 'MIT'
 __author__ = 'Kenneth Reitz'
 
+def _terminate_process(process):
+    if sys.platform == 'win32':
+        import ctypes
+        PROCESS_TERMINATE = 1
+        handle = ctypes.windll.kernel32.OpenProcess(PROCESS_TERMINATE, False, process.pid)
+        ctypes.windll.kernel32.TerminateProcess(handle, -1)
+        ctypes.windll.kernel32.CloseHandle(handle)
+    else:
+        os.kill(process.pid, signal.SIGTERM)
+
+def _kill_process(process):
+    if sys.platform == 'win32':
+        _terminate_process(process)
+    else:
+        os.kill(process.pid, signal.SIGKILL)
+
+def _is_alive(thread):
+    if hasattr(thread, "is_alive"):
+        return thread.is_alive()
+    else:
+        return thread.isAlive()
 
 class Command(object):
     def __init__(self, cmd):
@@ -30,7 +53,7 @@ class Command(object):
         self.returncode = None
         self.data = None
 
-    def run(self, data, timeout, kill_timeout, env):
+    def run(self, data, timeout, kill_timeout, env, cwd):
         self.data = data
         environ = dict(os.environ)
         environ.update(env or {})
@@ -45,24 +68,29 @@ class Command(object):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=0,
+                cwd=cwd,
             )
-
-            self.out, self.err = self.process.communicate(self.data)
+            if sys.version_info[0] >= 3:
+                self.out, self.err = self.process.communicate(
+                    input = bytes(self.data, "UTF-8") if self.data else None
+                )
+            else:
+                self.out, self.err = self.process.communicate(self.data)
 
         thread = threading.Thread(target=target)
         thread.start()
 
         thread.join(timeout)
-        if thread.is_alive():
-            self.process.terminate()
+        if _is_alive(thread):
+            _terminate_process(self.process)
             thread.join(kill_timeout)
-            if thread.is_alive():
-                self.process.kill()
+            if _is_alive(thread):
+                _kill_process(self.process)
                 thread.join()
         self.returncode = self.process.returncode
         return self.out, self.err
 
-def ConnectedCommand(object):
+class ConnectedCommand(object):
     def __init__(self,
         process=None,
         std_in=None,
@@ -73,7 +101,7 @@ def ConnectedCommand(object):
         self.std_in = std_in
         self.std_out = std_out
         self.std_err = std_out
-
+        self.status_code = None
 
     def __enter__(self):
         return self
@@ -86,10 +114,7 @@ def ConnectedCommand(object):
         """The status code of the process.
         If the code is None, assume that it's still running.
         """
-        if self._status_code is not None:
-            return self._status_code
-        # investigate
-        return None
+        return self._status_code
 
     @property
     def pid(self):
@@ -108,9 +133,7 @@ def ConnectedCommand(object):
 
     def send(self, str, end='\n'):
         """Sends a line to std_in."""
-        # TODO: Y U LINE BUFFER
         return self._process.stdin.write(str+end)
-        pass
 
     def block(self):
         """Blocks until command finishes. Returns Response instance."""
@@ -142,11 +165,12 @@ def expand_args(command):
     """Parses command strings and returns a Popen-ready list."""
 
     # Prepare arguments.
-    if isinstance(command, basestring):
+    if isinstance(command, str):
         splitter = shlex.shlex(command)
         splitter.whitespace = '|'
         splitter.whitespace_split = True
         command = []
+
         while True:
             token = splitter.get_token()
             if token:
@@ -154,12 +178,12 @@ def expand_args(command):
             else:
                 break
 
-        command = map(shlex.split, command)
+        command = list(map(shlex.split, command))
 
     return command
 
 
-def run(command, data=None, timeout=None, kill_timeout=None, env=None):
+def run(command, data=None, timeout=None, kill_timeout=None, env=None, cwd=None):
     """Executes a given command and returns Response.
 
     Blocks until process is complete, or timeout is reached.
@@ -168,7 +192,6 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None):
     command = expand_args(command)
 
     history = []
-
     for c in command:
 
         if len(history):
@@ -176,7 +199,7 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None):
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
-        out, err = cmd.run(data, timeout, kill_timeout, env)
+        out, err = cmd.run(data, timeout, kill_timeout, env, cwd)
 
         r = Response(process=cmd)
 
@@ -192,7 +215,8 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None):
 
     return r
 
-def connect(command, data=None, env=None):
+
+def connect(command, data=None, env=None, cwd=None):
     """Spawns a new process from the given command."""
 
     # TODO: support piped commands
@@ -208,6 +232,7 @@ def connect(command, data=None, env=None):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         bufsize=0,
+        cwd=cwd,
     )
 
     return ConnectedCommand(process=process)
