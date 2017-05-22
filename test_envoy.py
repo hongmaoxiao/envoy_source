@@ -29,6 +29,10 @@ class SimpleTest(unittest.TestCase):
         self.assertEqual(r.std_out.rstrip(), sentinel)
         self.assertEqual(r.status_code, 0)
 
+    def test_non_existing_command(self):
+        r = envoy.run("blah")
+        self.assertEqual(r.status_code, 127)
+
 class ConnectedCommandTests(unittest.TestCase):
 
     def test_status_code_none(self):
@@ -48,8 +52,8 @@ class ConnectedCommandTests(unittest.TestCase):
         test_string = 'asdfQWER'
         r = envoy.connect("cat | tr [:lower:] [:upper:]")
         r.send(test_string)
-        self.assertEqual(c.std_out, test_string.upper())
-        self.assertEqual(c.status_code, 0)
+        self.assertEqual(r.std_out, test_string.upper())
+        self.assertEqual(r.status_code, 0)
 
 if __name__ == '__main__':
     unittest.main()

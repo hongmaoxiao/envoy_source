@@ -16,6 +16,7 @@ import shlex
 import signal
 import subprocess
 import threading
+import traceback
 
 
 __version__ = '0.0.2'
@@ -204,14 +205,19 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None, cwd=None)
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
-        out, err = cmd.run(data, timeout, kill_timeout, env, cwd)
+        try:
+            out, err = cmd.run(data, timeout, kill_timeout, env, cwd)
+            status_code = cmd.returncode
+        except OSError as e:
+            out, err = '', u"\n".join([e.strerror, traceback.format_exc()])
+            status_code = 127
 
         r = Response(process=cmd)
 
         r.command = c
         r.std_out = out
         r.std_err = err
-        r.status_code = cmd.returncode
+        r.status_code = status_code
 
         history.append(r)
 
