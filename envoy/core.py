@@ -200,7 +200,7 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None, cwd=None)
     for c in command:
 
         if len(history):
-            # due to broken pip problems pass only first 10MB
+            # due to broken pip problems pass only first 10KiB
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
