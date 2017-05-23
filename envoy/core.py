@@ -33,17 +33,20 @@ def _terminate_process(process):
     else:
         os.kill(process.pid, signal.SIGTERM)
 
+
 def _kill_process(process):
     if sys.platform == 'win32':
         _terminate_process(process)
     else:
         os.kill(process.pid, signal.SIGKILL)
 
+
 def _is_alive(thread):
     if hasattr(thread, "is_alive"):
         return thread.is_alive()
     else:
         return thread.isAlive()
+
 
 class Command(object):
     def __init__(self, cmd):
@@ -73,6 +76,7 @@ class Command(object):
                     bufsize=0,
                     cwd=cwd,
                 )
+
                 if sys.version_info[0] >= 3:
                     self.out, self.err = self.process.communicate(
                         input = bytes(self.data, "UTF-8") if self.data else None
@@ -81,6 +85,7 @@ class Command(object):
                     self.out, self.err = self.process.communicate(self.data)
             except Exception as exc:
                 self.exc = exc
+
 
         thread = threading.Thread(target=target)
         thread.start()
@@ -97,6 +102,7 @@ class Command(object):
         self.returncode = self.process.returncode
         return self.out, self.err
 
+
 class ConnectedCommand(object):
     def __init__(self,
         process=None,
@@ -108,7 +114,7 @@ class ConnectedCommand(object):
         self.std_in = std_in
         self.std_out = std_out
         self.std_err = std_out
-        self.status_code = None
+        self._status_code = None
 
     def __enter__(self):
         return self
@@ -167,12 +173,13 @@ class Response(object):
         else:
             return '<Response>'
 
+
 def expand_args(command):
     """Parses command strings and returns a Popen-ready list."""
 
     # Prepare arguments.
-    if isinstance(command, str):
-        splitter = shlex.shlex(command)
+    if isinstance(command, (str, unicode)):
+        splitter = shlex.shlex(command.encode('utf-8'))
         splitter.whitespace = '|'
         splitter.whitespace_split = True
         command = []
@@ -201,7 +208,7 @@ def run(command, data=None, timeout=None, kill_timeout=None, env=None, cwd=None)
     for c in command:
 
         if len(history):
-            # due to broken pip problems pass only first 10KiB
+            # due to broken pipe problems pass only first 10 KiB
             data = history[-1].std_out[0:10*1024]
 
         cmd = Command(c)
